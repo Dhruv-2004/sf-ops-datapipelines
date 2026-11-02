@@ -1,0 +1,124 @@
+# OPS pod - Snowflake deployments.
+#
+# Every job here is a CALL into the shared platform repo, pinned to @v1.
+# The pod owns definitions; it does not own deployment logic. That split is the
+# maintenance model from the CI/CD Restructuring page, made concrete.
+#
+# Flow (the proposed model, not today's):
+#   PR -> qa        PLAN against DEV, QA and PROD. The PROD plan is the new capability:
+#                   reviewers see the exact PROD changeset BEFORE merge. Today nobody sees
+#                   the PROD effect until the release run.
+#   merge to qa     DEPLOY DEV
+#   qa* tag         DEPLOY QA
+#   release         DEPLOY PROD, alias = release name
+#
+# No manual revert step anywhere: a release is a STATE of the definitions, not a branch
+# that has had other people's changes surgically removed. That is the DCS-7737 problem,
+# gone by construction - and scenario 18 of the test matrix is where we prove it.
+#
+# Only the domains whose folders changed are planned or deployed. The per-domain project
+# split is what makes that possible.
+#
+# Dhruv-2004 is stamped by tools/stamp_lab.ps1.
+
+name: Snowflake (OPS)
+
+on:
+  pull_request:
+    branches: [qa]
+    paths: ['snowflake/**']
+  push:
+    branches: [qa]
+    tags: ['qa*']
+    paths: ['snowflake/**']
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      target:
+        type: choice
+        options: [DEV, QA, PROD]
+        default: DEV
+      project_dir:
+        type: string
+        default: snowflake/smart_rent
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  # Which domains did this change actually touch?
+  changed:
+    runs-on: ubuntu-latest
+    outputs:
+      dirs: ${{ steps.detect.outputs.dirs }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - id: detect
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+            DIRS=$(ls -d snowflake/*/ | sed 's:/*$::' | jq -R . | jq -sc .)
+          else
+            DIRS=$(git diff --name-only "$BASE" HEAD -- 'snowflake/**' \
+                   | cut -d/ -f1,2 | sort -u | jq -R . | jq -sc .)
+          fi
+          echo "dirs=${DIRS:-[]}" >> "$GITHUB_OUTPUT"
+          echo "changed project folders: $DIRS"
+
+  plan:
+    if: github.event_name == 'pull_request'
+    needs: changed
+    strategy:
+      fail-fast: false
+      matrix:
+        project_dir: ${{ fromJson(needs.changed.outputs.dirs) }}
+        target: [DEV, QA, PROD]
+    uses: Dhruv-2004/datapipelines-deployment-workflows/.github/workflows/dcm-plan.yml@v1
+    with:
+      project_dir: ${{ matrix.project_dir }}
+      target: ${{ matrix.target }}
+    secrets: inherit
+
+  deploy_dev:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/qa'
+    needs: changed
+    strategy:
+      fail-fast: false
+      matrix:
+        project_dir: ${{ fromJson(needs.changed.outputs.dirs) }}
+    uses: Dhruv-2004/datapipelines-deployment-workflows/.github/workflows/dcm-deploy.yml@v1
+    with:
+      project_dir: ${{ matrix.project_dir }}
+      target: DEV
+    secrets: inherit
+
+  deploy_qa:
+    if: startsWith(github.ref, 'refs/tags/qa')
+    needs: changed
+    strategy:
+      fail-fast: false
+      matrix:
+        project_dir: ${{ fromJson(needs.changed.outputs.dirs) }}
+    uses: Dhruv-2004/datapipelines-deployment-workflows/.github/workflows/dcm-deploy.yml@v1
+    with:
+      project_dir: ${{ matrix.project_dir }}
+      target: QA
+      alias: ${{ github.ref_name }}
+    secrets: inherit
+
+  deploy_prod:
+    if: github.event_name == 'release'
+    needs: changed
+    strategy:
+      fail-fast: false
+      matrix:
+        project_dir: ${{ fromJson(needs.changed.outputs.dirs) }}
+    uses: Dhruv-2004/datapipelines-deployment-workflows/.github/workflows/dcm-deploy.yml@v1
+    with:
+      project_dir: ${{ matrix.project_dir }}
+      target: PROD
+      alias: ${{ github.event.release.tag_name }}
+    secrets: inherit

@@ -1,0 +1,50 @@
+# DCS-7793 lab - OPS pod, yardi domain.
+# Schemas in scope: RZ.YARDI_DBO, RCZ.YARDI_DBO
+#
+# One project folder per domain, three targets (DEV/QA/PROD), one DCM project OBJECT each.
+# This is Snowflake's "Option C" layout, and the only one that fits our estate:
+# a single project for the whole repo would need ~13,800 entities against a 10,000 limit.
+#
+# Note what is NOT here: nothing refers to the other pod's repo. That is the point.
+# The two pods share a Snowflake account and a deployment platform, not a repo or a branch.
+#
+# project_owner differs per target so a DEV deploy physically cannot touch PROD.
+# At IH today all three environments deploy as SYSADMIN; testing the split is part of the spike.
+
+manifest_version: 2
+type: DCM_PROJECT
+default_target: DEV
+
+targets:
+  DEV:
+    account_identifier: QZCIDRD-ZD02517
+    project_name: DCM_ADMIN.PROJECTS.OPS_YARDI_DEV
+    project_owner: DCM_DEPLOYER_DEV
+    templating_config: DEV
+
+  QA:
+    account_identifier: QZCIDRD-ZD02517
+    project_name: DCM_ADMIN.PROJECTS.OPS_YARDI_QA
+    project_owner: DCM_DEPLOYER_QA
+    templating_config: QA
+
+  PROD:
+    account_identifier: QZCIDRD-ZD02517
+    project_name: DCM_ADMIN.PROJECTS.OPS_YARDI_PROD
+    project_owner: DCM_DEPLOYER_PROD
+    templating_config: PROD
+
+templating:
+  defaults:
+    # Replaces the per-changeset GRANT lines Liquibase carries today.
+    # Remove a role here and DCM revokes the grants it manages on the next deploy.
+    read_roles: ["ANALYST", "DEVELOPER"]
+
+  configurations:
+    # {{env}} is the one-for-one replacement for Liquibase's ${envId}.
+    DEV:
+      env: "DEV"
+    QA:
+      env: "QA"
+    PROD:
+      env: "PROD"

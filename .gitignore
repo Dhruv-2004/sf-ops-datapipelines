@@ -1,0 +1,11 @@
+# never commit credentials or plan artifacts
+*.p8
+*.pub
+.env.ps1
+key.p8
+snowflake_key.p8
+out/
+**/out/
+plan_result.json
+deploy_result.json
+__pycache__/

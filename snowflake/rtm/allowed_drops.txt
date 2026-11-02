@@ -1,0 +1,7 @@
+# Destructive changes reviewed and approved for the NEXT deploy of OPS_RTM. Read by tools/check_plan.py.
+# DCM is declarative: deleting a DEFINE drops the object, and renaming a column is applied as
+# DROP old + ADD new. This file is the human sign-off for either.
+# One per line, e.g.
+#   DROP TABLE DEV_RCZ.OTM.OLD_TABLE
+#   DROP COLUMN DEV_RCZ.OTM.APPLICATION_SAVED.POC_COMMENT
+# Clear this file after the deploy.
