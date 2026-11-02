@@ -17,19 +17,19 @@ default_target: DEV
 
 targets:
   DEV:
-    account_identifier: QZCIDRD-ZD02517
+    account_identifier: QZCIDRD-PE63416
     project_name: DCM_ADMIN.PROJECTS.OPS_SMART_RENT_DEV
     project_owner: DCM_DEPLOYER_DEV
     templating_config: DEV
 
   QA:
-    account_identifier: QZCIDRD-ZD02517
+    account_identifier: QZCIDRD-PE63416
     project_name: DCM_ADMIN.PROJECTS.OPS_SMART_RENT_QA
     project_owner: DCM_DEPLOYER_QA
     templating_config: QA
 
   PROD:
-    account_identifier: QZCIDRD-ZD02517
+    account_identifier: QZCIDRD-PE63416
     project_name: DCM_ADMIN.PROJECTS.OPS_SMART_RENT_PROD
     project_owner: DCM_DEPLOYER_PROD
     templating_config: PROD
