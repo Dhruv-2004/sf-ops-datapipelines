@@ -19,7 +19,7 @@
 # Only the domains whose folders changed are planned or deployed. The per-domain project
 # split is what makes that possible.
 #
-# Dhruv-2004 is stamped by tools/stamp_lab.ps1.
+# The platform repo owner below is stamped in by tools/stamp_lab.ps1.
 
 name: Snowflake (OPS)
 
